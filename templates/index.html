@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Cloud Playground - Hello World</title>
+    <meta name="description" content="A simple Google GenAI SDK Python hello world application deployed on Google Cloud Run.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2L14.85 9.15L22 12L14.85 14.85L12 22L9.15 14.85L2 12L9.15 9.15L12 2Z" />
+                    </svg>
+                </div>
+                <span class="logo-title">Gemini Cloud Playground</span>
+            </div>
+            
+            {% if has_api_key %}
+            <div class="status-badge active" id="key-status-badge">
+                <span class="status-dot"></span>
+                <span>GEMINI_API_KEY 已配置</span>
+            </div>
+            {% else %}
+            <div class="status-badge missing" id="key-status-badge">
+                <span class="status-dot"></span>
+                <span>未配置 GEMINI_API_KEY</span>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <!-- Playground Interface -->
+        <section class="playground-section">
+            <h1 class="section-title">Hello Gemini!</h1>
+            <p class="section-subtitle">通过 Google GenAI Python SDK 调用 Gemini 2.0 Flash 模型</p>
+
+            {% if not has_api_key %}
+            <div class="alert-box" id="api-key-warning">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                </svg>
+                <div>
+                    <strong>提示：</strong> 服务器端未检测到 <code>GEMINI_API_KEY</code> 环境变量。您可以在下方临时输入 API Key 进行测试，或在部署到 Cloud Run 时将其配置为环境变量。
+                </div>
+            </div>
+
+            <div class="form-group" id="temp-key-group">
+                <label class="form-label" for="api-key-input">临时 API Key (仅前端保存)</label>
+                <div class="api-key-input-wrapper">
+                    <input type="password" id="api-key-input" class="input-field" placeholder="AIzaSy...">
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label class="form-label" for="prompt-input">Prompt 提示词</label>
+                <textarea id="prompt-input" class="input-field" placeholder="向 Gemini 提问些什么..."></textarea>
+            </div>
+
+            <div class="suggestions">
+                <span class="suggestion-chip" onclick="setPrompt('你好，Gemini！请做一个自我介绍。')">👋 自我介绍</span>
+                <span class="suggestion-chip" onclick="setPrompt('用 Python 写一个最简单的 Web 服务器 Hello World 示例。')">🐍 Python Web Hello</span>
+                <span class="suggestion-chip" onclick="setPrompt('简述 Google Cloud Run 的三大优势。')">🚀 Cloud Run 优势</span>
+            </div>
+
+            <div class="prompt-actions">
+                <div></div>
+                <button id="generate-btn" class="btn btn-primary" onclick="submitPrompt()">
+                    <span class="spinner"></span>
+                    <span>发送给 Gemini</span>
+                </button>
+            </div>
+
+            <div class="output-container" id="output-container">
+                <div class="output-header">
+                    <div class="output-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Gemini 响应</span>
+                    </div>
+                    <span class="output-badge" id="model-badge">gemini-2.0-flash</span>
+                </div>
+                <div class="output-box" id="output-box">加载中...</div>
+            </div>
+        </section>
+
+        <!-- Sidebar Deploy / Setup instructions -->
+        <section class="info-section">
+            <div class="info-card">
+                <h3>🚀 Cloud Run 部署指南</h3>
+                <p>您已经准备好最简单的 Hello World 结构。可以通过以下步骤将此应用发布到 Google Cloud Run：</p>
+                <ul class="step-list">
+                    <li class="step-item">
+                        <div class="step-num">1</div>
+                        <div>
+                            <strong>使用 MCP 工具部署</strong>
+                            <p style="margin-top: 0.25rem;">在当前 Agent 对话中使用 <code>mcp_cloudrun_deploy_local_folder</code> 部署当前文件夹。</p>
+                        </div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-num">2</div>
+                        <div>
+                            <strong>绑定 API Key 变量</strong>
+                            <p style="margin-top: 0.25rem;">部署时设置环境变量：<br><code>GEMINI_API_KEY=您的Key</code></p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>🛠️ 本地运行</h3>
+                <p>若要在本地测试，可运行以下命令：</p>
+                <div class="code-block">
+                    <span class="code-comment"># 安装依赖</span><br>
+                    pip install -r requirements.txt<br><br>
+                    <span class="code-comment"># 设置环境变量</span><br>
+                    set GEMINI_API_KEY="您的API_KEY"<br><br>
+                    <span class="code-comment"># 启动服务</span><br>
+                    python app.py
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Gemini AI Hackathon. Powered by Google Cloud Run & Google GenAI SDK.</p>
+    </footer>
+
+    <script>
+        function setPrompt(text) {
+            document.getElementById('prompt-input').value = text;
+        }
+
+        async function submitPrompt() {
+            const promptInput = document.getElementById('prompt-input');
+            const prompt = promptInput.value.trim();
+            const generateBtn = document.getElementById('generate-btn');
+            const outputContainer = document.getElementById('output-container');
+            const outputBox = document.getElementById('output-box');
+            
+            if (!prompt) {
+                alert('请输入 Prompt 提示词！');
+                return;
+            }
+
+            let apiKey = '';
+            const keyInput = document.getElementById('api-key-input');
+            if (keyInput) {
+                apiKey = keyInput.value.trim();
+            }
+
+            // UI feedback
+            generateBtn.classList.add('loading');
+            generateBtn.disabled = true;
+            outputContainer.classList.add('active');
+            outputBox.textContent = '思考中...';
+            outputBox.style.color = '#e5e7eb';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt, apiKey })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    outputBox.textContent = data.text;
+                    document.getElementById('model-badge').textContent = data.model || 'gemini-2.0-flash';
+                } else {
+                    outputBox.textContent = data.error || '调用出错，请稍后重试。';
+                    outputBox.style.color = '#ef4444';
+                }
+            } catch (err) {
+                outputBox.textContent = '网络错误：无法连接到后端服务器。';
+                outputBox.style.color = '#ef4444';
+            } finally {
+                generateBtn.classList.remove('loading');
+                generateBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
