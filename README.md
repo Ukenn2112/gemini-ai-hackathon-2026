@@ -14,6 +14,26 @@
 
 ## 本地开发与测试
 
+为了简化本地开发环境的配置，我们在 `scripts` 目录下提供了一键启动脚本。它会自动执行：检测并创建 `.venv` 虚拟环境、安装依赖、检测并复制 `.env` 配置文件、验证 Gemini API Key 状态并最终启动 Flask 服务器：
+
+- **Windows (PowerShell)**:
+  ```powershell
+  ./scripts/start.ps1
+  ```
+- **Windows (CMD)**:
+  ```cmd
+  scripts\start.bat
+  ```
+- **Linux / macOS**:
+  ```bash
+  chmod +x scripts/start.sh
+  ./scripts/start.sh
+  ```
+
+---
+
+### 手动开发与测试步骤
+
 ### 1. 创建虚拟环境并安装依赖
 ```bash
 # 创建虚拟环境

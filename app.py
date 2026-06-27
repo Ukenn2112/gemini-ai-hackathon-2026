@@ -33,7 +33,7 @@ def run_adk_agent(prompt, api_key=None):
             # Define the agent with instruction and model
             agent = LlmAgent(
                 name="hello_agent",
-                model="gemini-2.0-flash",
+                model="gemini-3.5-flash",
                 instruction="You are a helpful assistant. Greet the user warmly and answer their query."
             )
             
@@ -100,7 +100,7 @@ def generate():
     return jsonify({
         "success": True,
         "text": result.get("text"),
-        "model": "gemini-2.0-flash (via Google ADK)"
+        "model": "gemini-3.5-flash (via Google ADK)"
     })
 
 # Health check endpoint for Cloud Run

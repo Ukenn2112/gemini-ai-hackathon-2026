@@ -38,7 +38,7 @@
         <!-- Playground Interface -->
         <section class="playground-section">
             <h1 class="section-title">Hello Gemini!</h1>
-            <p class="section-subtitle">通过 Google GenAI Python SDK 调用 Gemini 2.0 Flash 模型</p>
+            <p class="section-subtitle">通过 Google GenAI Python SDK 调用 Gemini 3.5 Flash 模型</p>
 
             {% if not has_api_key %}
             <div class="alert-box" id="api-key-warning">
@@ -83,7 +83,7 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         <span>Gemini 响应</span>
                     </div>
-                    <span class="output-badge" id="model-badge">gemini-2.0-flash</span>
+                    <span class="output-badge" id="model-badge">gemini-3.5-flash</span>
                 </div>
                 <div class="output-box" id="output-box">加载中...</div>
             </div>
@@ -174,7 +174,7 @@
 
                 if (response.ok && data.success) {
                     outputBox.textContent = data.text;
-                    document.getElementById('model-badge').textContent = data.model || 'gemini-2.0-flash';
+                    document.getElementById('model-badge').textContent = data.model || 'gemini-3.5-flash';
                 } else {
                     outputBox.textContent = data.error || '调用出错，请稍后重试。';
                     outputBox.style.color = '#ef4444';
