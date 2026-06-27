@@ -121,34 +121,44 @@ def search_google_for_info(query: str) -> str:
 search_tool = FunctionTool(func=search_google_for_info)
 
 # Initialize Google ADK Agents
-# 1. Multimodal Item Extractor Agent
+# 1. Multimodal Item Extractor Agent (SlipScout Universal Receipt/Label Decoder)
 extractor_agent = LlmAgent(
-    name="costco_item_extractor",
+    name="slipscout_item_extractor",
     model=GEMINI_MODEL,
-    instruction="""You are a Costco Product Recognition Expert.
-You will be provided with an image which can be a shopping receipt, or a photo of one or more products.
-Analyze the image and recognize all the purchased or shown items.
-For each item, identify:
-1. A unique product ID (like the Costco item number/SKU/barcode if visible. If not visible, generate a unique 6-digit number starting with 9).
-2. The product name in Japanese.
-Output the result ONLY as a valid JSON array of objects, where each object has "id" and "name" keys.
-Do not include any markdown backticks, formatting, or conversational text.
+    instruction="""You are SlipScout, a Universal Japanese Receipt and Product Label Recognition & Decoding Expert.
+Your mission is to analyze any shopping receipt, product packaging, invoice, or store ticket.
+Decode and translate all Japanese/Katakana abbreviated names into standard English names (with original Japanese standard names in parentheses).
+For each item in the image, identify:
+1. id: A unique product ID (like the item number/SKU/barcode if visible. If not visible, generate a unique 6-digit number starting with 9).
+2. raw_name: The exact raw abbreviated text or code as printed on the receipt (e.g. 'ｷｬﾍﾞﾂ', 'EVE A 60錠', 'ﾊﾄﾑｷﾞ化粧水').
+3. name: The standard standardized, human-readable English name with the Japanese name in parentheses, formatted like: 'Cabbage (キャベツ)' or 'EVE A Pain Reliever (EVE A 60錠)' or 'Hatomugi Skin Conditioner (ハトムギ化粧水)'.
+4. category: The category of the product. Choose exactly one from: 'Grocery', 'Drugstore', 'Fashion', 'Home', 'Convenience', 'Other'.
+5. price: The price of the product in Japanese Yen (number only, e.g. 158 or 880 or 1500).
+
+Output the result ONLY as a valid JSON array of objects. Do not include any markdown backticks, formatting, or conversational text.
 Example output:
-[{"id": "583495", "name": "ココナッツポークカレー"}, {"id": "902144", "name": "トイレットペーパー"}]"""
+[
+  {"id": "923485", "raw_name": "ｷｬﾍﾞﾂ", "name": "Cabbage (キャベツ)", "category": "Grocery", "price": 158},
+  {"id": "902144", "raw_name": "EVE A 60錠", "name": "EVE A Pain Reliever (EVE A 60錠)", "category": "Drugstore", "price": 880}
+]"""
 )
 extractor_runner = InMemoryRunner(agent=extractor_agent)
 extractor_runner.auto_create_session = True
 
-# 2. AI Shopping Assistant Agent
+# 2. AI Shopping Assistant Agent (SlipScout Local Lifestyle Scout Assistant)
 assistant_agent = LlmAgent(
-    name="costco_assistant",
+    name="slipscout_assistant",
     model=GEMINI_MODEL,
-    instruction="""You are a helpful Costco Shopping Assistant. 
-You help users with the items they scanned (receipts or product packagings).
-You can suggest recipes, storage methods, nutritional facts, or price comparisons.
-You have access to Google Search via the search_google_for_info tool to find accurate info about products or recipes.
-When searching Google for details about any scanned product, you must use the query format 'コストコ <Product ID>' (using the 5-6 digit product ID/code instead of its name).
-Always answer in Japanese. Be friendly, polite, and professional.""",
+    instruction="""You are SlipScout AI Assistant, a warm, knowledgeable, and empathetic local life scout and guide for foreigners living in or traveling to Japan.
+Your job is to answer the user's questions about their scanned receipt items (foods, medicines, skincare, apparel, home tools, etc.).
+You can provide:
+1. Detailed usage guides, precautions, and instructions for products.
+2. Smart Japanese trash classification & recycling guidelines for packaging (such as paper carton, plastic bottle, aluminum, combustible, non-combustible waste).
+3. Cooking recipes, food storage, skincare steps, or household safety warnings.
+
+Always answer in a friendly, polite, conversational, and caring tone.
+Always reply strictly in English. Do not use Chinese or other languages.
+You have access to Google Search via the search_google_for_info tool to find accurate info about Japanese products, guidelines, or recipes.""",
     tools=[search_tool]
 )
 assistant_runner = InMemoryRunner(agent=assistant_agent)
@@ -435,6 +445,14 @@ def index():
     has_api_key = GEMINI_API_KEY is not None
     return render_template("index.html", has_api_key=has_api_key)
 
+@app.route("/sw.js")
+def serve_sw():
+    return send_from_directory("static", "sw.js", mimetype="application/javascript")
+
+@app.route("/manifest.json")
+def serve_manifest():
+    return send_from_directory("static", "manifest.json", mimetype="application/json")
+
 @app.route("/api/upload", methods=["POST"])
 def upload():
     if not GEMINI_API_KEY:
@@ -516,6 +534,57 @@ def chat():
         })
     except Exception as e:
         logger.exception("Error during chat assistant invocation:")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/product-details", methods=["POST"])
+def product_details():
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "Gemini API key is not configured."}), 500
+        
+    data = request.json or {}
+    product_name = data.get("name", "").strip()
+    product_id = data.get("id", "").strip()
+    
+    if not product_name:
+        return jsonify({"error": "Product name is required"}), 400
+        
+    logger.info(f"Generating rich dynamic details for product: '{product_name}' (ID: {product_id})")
+    
+    prompt = f"""You are SlipScout, a Japanese local life expert. Provide detailed, helpful information for the following product scanned from a Japanese receipt.
+Product Name: {product_name} (ID: {product_id})
+
+Provide the output ONLY as a valid, parsable JSON object with the following keys:
+- description: A brief explanation (strictly in English) of what this product is and who it is for. Keep it concise, warm, and helpful.
+- category: A friendly category name (strictly in English, e.g., "Drugstore / Health", "Grocery / Food", "Home / Household", "Fashion / Apparel").
+- usage: An object with keys:
+    - dosage: Dosage or usage size (strictly in English, e.g., "Take 2 tablets" or "Drink directly" or "Apply after washing face" or "Wear directly").
+    - interval: How often to use/store (strictly in English, e.g., "Up to 3 times a day" or "Consume immediately after opening" or "Morning and night" or "Store at room temp").
+    - instructions: A short JSON list of 2-3 step-by-step instructions strictly in English on how to use or store it.
+- precautions: Critical safety warnings or precautions (strictly in English, e.g., "Do not take on an empty stomach", "Avoid direct sunlight" or "Hand wash with warm water").
+- recycling: A list of objects representing packaging components. Each object has:
+    - item: Name of packaging piece (strictly in English, e.g., "Outer Paper Box", "Plastic Bottle Body", "Aluminum Foil Bag", "Outer Plastic Wrap").
+    - bin: Which Japanese trash bin to put it in (strictly in English, with original Japanese in parentheses, e.g., "Paper Recyclables (古紙類)", "Combustible Waste (可燃ごみ)", "Resource Plastics (資源プラスチック)", "Non-Combustible Waste (不燃ごみ)").
+    - icon: Material symbol name for the item. Choose from: "inventory_2" (for boxes), "layers" (for foil/sheets), "delete" (for burnable), "recycling" (for plastic bottle/wrap), "view_in_ar" (for containers).
+
+Do not include any markdown backticks, formatting, or conversational text. Make sure it is valid JSON."""
+    
+    try:
+        response = genai_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        result_text = response.text or "{}"
+        logger.info(f"Generated raw details for '{product_name}': {result_text}")
+        
+        # Clean potential markdown block
+        result_text = re.sub(r'```json\s*|\s*```', '', result_text).strip()
+        details = json.loads(result_text)
+        return jsonify({
+            "success": True,
+            "details": details
+        })
+    except Exception as e:
+        logger.exception(f"Error generating product details for '{product_name}':")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/health")

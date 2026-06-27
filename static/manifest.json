@@ -1,0 +1,24 @@
+{
+  "name": "SlipScout",
+  "short_name": "SlipScout",
+  "description": "AI-powered Japanese receipt decoder and local life guide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5ece7",
+  "theme_color": "#334f2b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
